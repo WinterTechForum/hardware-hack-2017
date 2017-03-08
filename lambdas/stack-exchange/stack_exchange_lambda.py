@@ -4,6 +4,7 @@ Search StackOverflow
 
 from __future__ import print_function
 import stackexchange
+from stackexchange import Site, StackOverflow
 import boto3
 
 QUEUE_NAME = "lambda-stack-overflow"
@@ -47,6 +48,22 @@ def send_to_sqs(url):
     resp = SQS.send_message(QueueUrl=q, MessageBody=url)
     return
 
+def get_reputation(intent, session, user_id):
+    so = Site(StackOverflow)
+    user = so.user(user_id)
+    session_attributes = {}
+    reprompt_text = None
+    should_end_session = True
+    speech_output = "You have %d reputation" % (user.reputation)
+
+    # Setting reprompt_text to None signifies that we do not want to reprompt
+    # the user. If the user does not respond or says something that is not
+    # understood, the session will end.
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))    
+
+
+
 def get_welcome_response():
     """ If we wanted to initialize the session to have some attributes we could
     add those here
@@ -83,7 +100,7 @@ def show_results_in_browser(intent, session):
     if session.get('attributes', {}) and "title" in session.get('attributes', {}):
         title = session['attributes']['title']
         url = session['attributes']['url']
-        speech_output = "Ok. Coming right up. " + title
+        speech_output = "Ok. Coming right up."
 
         send_to_sqs(url)
 
@@ -165,6 +182,8 @@ def on_intent(intent_request, session):
         return search_so(intent, session)
     if intent_name == "Display":
         return show_results_in_browser(intent, session)
+    if intent_name == "Reputation":
+        return get_reputation(intent, session, 8217);
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
