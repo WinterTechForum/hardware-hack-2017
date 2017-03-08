@@ -75,6 +75,9 @@ def handle_session_end_request():
 def update_disco_light(intent, session):
 
     action = intent['slots']['discoOption']['value']
+    return update_disco(intent, session, action, "Ok, I turned the disco light "+action)
+
+def update_disco(intent, session, action, responseValue):
 
     # https://api.particle.io/v1/devices/20002c000247343337373739/led?access_token=342b89abb8022fdc05b8e0ed53d28bac700f2ed7
     conn = httplib.HTTPSConnection("api.particle.io")
@@ -85,7 +88,7 @@ def update_disco_light(intent, session):
                   "Accept": "text/plain"}
                  )
 
-    speech_output = "Ok, I turned the disco light " + action
+    speech_output = responseValue
     should_end_session = True
 
     return build_response({}, build_speechlet_response(intent['name'], speech_output, None, should_end_session))
@@ -121,6 +124,10 @@ def on_intent(intent_request, session):
     # Dispatch to your skill's intent handlers
     if intent_name == "DiscoTime":
         return update_disco_light(intent, session)
+    elif intent_name == "PartyTime":
+        return update_disco(intent, session, "on", "Ok, let\'s get this party started")
+    elif intent_name == "PartyOff":
+        return update_disco(intent, session, "off", "Ok, everyone go home")
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
         return handle_session_end_request()
     else:
