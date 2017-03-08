@@ -8,8 +8,7 @@ http://amzn.to/1LGWsLG
 """
 
 from __future__ import print_function
-import os
-import boto3
+import httplib, urllib
 
 
 # --------------- Helpers that build all of the responses ----------------------
@@ -77,7 +76,16 @@ def update_disco_light(intent, session):
 
     action = intent['slots']['discoOption']['value']
 
-    speech_output = "Ok, turning the disco light " + action
+    # https://api.particle.io/v1/devices/20002c000247343337373739/led?access_token=342b89abb8022fdc05b8e0ed53d28bac700f2ed7
+    conn = httplib.HTTPSConnection("api.particle.io")
+    conn.request("POST",
+                 "/v1/devices/20002c000247343337373739/led?access_token=342b89abb8022fdc05b8e0ed53d28bac700f2ed7",
+                 urllib.urlencode({'arg': action}),
+                 {"Content-type": "application/x-www-form-urlencoded",
+                  "Accept": "text/plain"}
+                 )
+
+    speech_output = "Ok, I turned the disco light " + action
     should_end_session = True
 
     return build_response({}, build_speechlet_response(intent['name'], speech_output, None, should_end_session))
