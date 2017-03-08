@@ -8,6 +8,8 @@ http://amzn.to/1LGWsLG
 """
 
 from __future__ import print_function
+import os
+import boto3
 
 
 # --------------- Helpers that build all of the responses ----------------------
@@ -72,6 +74,11 @@ def handle_session_end_request():
         card_title, speech_output, None, should_end_session))
 
 def send_dinner_message(intent, session):
+
+    snsClient = boto3.client('sns')
+    topicArn = os.environ['snsTopic']
+    topicMessage = os.environ['snsMessage']
+    snsClient.publish(TopicArn=topicArn, Message=topicMessage)
 
     speech_output = "Ok, I will tell the kids."
     should_end_session = True
