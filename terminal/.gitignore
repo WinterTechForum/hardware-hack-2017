@@ -1,0 +1,13 @@
+boto3*
+botocore*
+dateutil*
+docutils*
+futures-*
+jmespath*
+python_dateutil*
+requests*
+s3transfer*
+six*
+slackclient*
+websocket*
+concurrent*

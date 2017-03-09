@@ -137,7 +137,7 @@ def how_many_fingers(intent, session):
     elif finger_nums == "Four":
         speech_output = "the score is four, he says"
     elif finger_nums == "Five":
-        speech_output = "Yes, says David. Five alive."
+        speech_output = "Yes, he says. Five alive."
     else:
         speech_output = "I see three fingers."
     

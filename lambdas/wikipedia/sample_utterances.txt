@@ -1,0 +1,8 @@
+Search page {sample query|Query}
+Search search {sample query|Query}
+Search show me the page {sample query|Query}
+Display yes
+Display yep
+Display sure
+Display ok
+Display yes please

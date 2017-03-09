@@ -1,0 +1,13 @@
+Search search {sample query|Query}
+Display yes
+Display yep
+Display sure
+Display ok
+Display yes please
+Reputation my reputation
+Reputation what's my reputation
+Reputation how many points do i have
+Reputation how many reputation points do i have
+Cancel no
+Cancel nope
+Cancel no thanks

@@ -1,0 +1,15 @@
+{
+  "intents":
+  [{
+    "intent": "Search",
+    "slots": [
+      {"name": "Query", "type": "AMAZON.LITERAL"}
+    ]
+  },{
+    "intent": "Display"
+  },{
+    "intent": "Reputation"
+  }, {
+    "intent": "Cancel"
+  }]
+}

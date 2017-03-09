@@ -1,0 +1,10 @@
+websocket*
+six*
+beautifulsoup*
+bs4
+requests*
+slackclient*
+py_stackexchange*
+stackauth*
+stackexchange*
+backports*
