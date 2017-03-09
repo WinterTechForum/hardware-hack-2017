@@ -4,8 +4,10 @@ Search StackOverflow
 
 from __future__ import print_function
 import stackexchange
+from slackclient import SlackClient
 from stackexchange import Site, StackOverflow
 import boto3
+import os
 
 QUEUE_NAME = "lambda-stack-overflow"
 SQS = boto3.client("sqs")
@@ -48,6 +50,15 @@ def send_to_sqs(url):
     resp = SQS.send_message(QueueUrl=q, MessageBody=url)
     return
 
+def send_to_slack(url):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+    sc.api_call(
+      "chat.postMessage",
+      channel="#alexa",
+      text="open " + url
+    )
+
 def get_reputation(intent, session, user_id):
     so = Site(StackOverflow)
     user = so.user(user_id)
@@ -82,7 +93,7 @@ def get_welcome_response():
 
 def handle_session_end_request():
     card_title = "Session Ended"
-    speech_output = "Have a creepy day. Goodbye."
+    speech_output = "Happy coding. Goodbye."
     # Setting this to true ends the session and exits the skill.
     should_end_session = True
     return build_response({}, build_speechlet_response(
@@ -103,6 +114,7 @@ def show_results_in_browser(intent, session):
         speech_output = "Ok. Coming right up."
 
         send_to_sqs(url)
+        send_to_slack(url)
 
         # TODO: display the query in the browser
         should_end_session = True
@@ -182,6 +194,8 @@ def on_intent(intent_request, session):
         return search_so(intent, session)
     if intent_name == "Display":
         return show_results_in_browser(intent, session)
+    if intent_name == "Cancel":
+        return handle_session_end_request()
     if intent_name == "Reputation":
         return get_reputation(intent, session, 8217);
     elif intent_name == "AMAZON.HelpIntent":

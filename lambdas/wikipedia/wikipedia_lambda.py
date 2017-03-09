@@ -1,14 +1,15 @@
 """
-This sample demonstrates a simple skill built with the Amazon Alexa Skills Kit.
-The Intent Schema, Custom Slots, and Sample Utterances for this skill, as well
-as testing instructions are located at http://amzn.to/1LzFrj6
-
-For additional samples, visit the Alexa Skills Kit Getting Started guide at
-http://amzn.to/1LGWsLG
+Find Wikipedia pages
 """
 
 from __future__ import print_function
+import wikipedia
+import boto3
+from slackclient import SlackClient
+import os
 
+QUEUE_NAME = "lambda-stack-overflow"
+SQS = boto3.client("sqs")
 
 # --------------- Helpers that build all of the responses ----------------------
 
@@ -43,6 +44,20 @@ def build_response(session_attributes, speechlet_response):
 
 # --------------- Functions that control the skill's behavior ------------------
 
+def send_to_sqs(url):
+    q = SQS.get_queue_url(QueueName=QUEUE_NAME).get('QueueUrl')
+    resp = SQS.send_message(QueueUrl=q, MessageBody=url)
+    return
+
+def send_to_slack(url):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+    sc.api_call(
+      "chat.postMessage",
+      channel="#alexa",
+      text="open " + url
+    )
+
 def get_welcome_response():
     """ If we wanted to initialize the session to have some attributes we could
     add those here
@@ -50,11 +65,10 @@ def get_welcome_response():
 
     session_attributes = {}
     card_title = "Welcome"
-    speech_output = "Welcome to David Blaine as the mentalist. " \
-                    "Please ask David Blaine how many fingers you are holding up."
+    speech_output = "Welcome to Wikipedia. You can ask to open a Wikipedia page."
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
-    reprompt_text = "David Blaine can tell you how many fingers you are holding up. Just ask."
+    reprompt_text = "Try asking for a Wikipedia page by saying Alexa, find the wikipedia page for Ada Lovelace."
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
@@ -69,79 +83,56 @@ def handle_session_end_request():
         card_title, speech_output, None, should_end_session))
 
 
-# def create_favorite_color_attributes(favorite_color):
-#     return {"favoriteColor": favorite_color}
+def create_page_attributes(page):
+    return {"title": page.title, "url": page.url}
 
-# def set_color_in_session(intent, session):
-#     """ Sets the color in the session and prepares the speech to reply to the
-#     user.
-#     """
-
-#     card_title = intent['name']
-#     session_attributes = {}
-#     should_end_session = False
-
-#     if 'Color' in intent['slots']:
-#         favorite_color = intent['slots']['Color']['value']
-#         session_attributes = create_favorite_color_attributes(favorite_color)
-#         speech_output = "I now know your favorite color is " + \
-#                         favorite_color + \
-#                         ". You can ask me your favorite color by saying, " \
-#                         "what's my favorite color?"
-#         reprompt_text = "You can ask me your favorite color by saying, " \
-#                         "what's my favorite color?"
-#     else:
-#         speech_output = "I'm not sure what your favorite color is. " \
-#                         "Please try again."
-#         reprompt_text = "I'm not sure what your favorite color is. " \
-#                         "You can tell me your favorite color by saying, " \
-#                         "my favorite color is red."
-#     return build_response(session_attributes, build_speechlet_response(
-#         card_title, speech_output, reprompt_text, should_end_session))
-
-
-# def get_color_from_session(intent, session):
-#     session_attributes = {}
-#     reprompt_text = None
-
-#     if session.get('attributes', {}) and "favoriteColor" in session.get('attributes', {}):
-#         favorite_color = session['attributes']['favoriteColor']
-#         speech_output = "Your favorite color is " + favorite_color + \
-#                         ". Goodbye."
-#         should_end_session = True
-#     else:
-#         speech_output = "I'm not sure what your favorite color is. " \
-#                         "You can say, my favorite color is red."
-#         should_end_session = False
-
-#     # Setting reprompt_text to None signifies that we do not want to reprompt
-#     # the user. If the user does not respond or says something that is not
-#     # understood, the session will end.
-#     return build_response(session_attributes, build_speechlet_response(
-#         intent['name'], speech_output, reprompt_text, should_end_session))
-
-
-def how_many_fingers(intent, session):
+def show_results_in_browser(intent, session):
     session_attributes = {}
     reprompt_text = None
-    should_end_session = True
 
-    prefix = "HowManyFingersIntent"
-    finger_nums = intent['name'][len(prefix):]
-    if finger_nums == "One":
-        speech_output = "he says he won't talk to you anymore"
-    elif finger_nums == "Two":
-        speech_output = "he's asking if you're holding up a peace sign"
-    elif finger_nums == "Three":
-        speech_output = "David says three fingers"
-    elif finger_nums == "Four":
-        speech_output = "the score is four, he says"
-    elif finger_nums == "Five":
-        speech_output = "Yes, says David. Five alive."
+    if session.get('attributes', {}) and "title" in session.get('attributes', {}):
+        title = session['attributes']['title']
+        url = session['attributes']['url']
+        speech_output = "Ok. Coming right up."
+        send_to_sqs(url)
+        send_to_slack(url)
+
+        # TODO: display the query in the browser
+        should_end_session = True
     else:
-        speech_output = "I see three fingers."
-    
+        speech_output = "I don't know what you want me to display. Try searching for something first."
+        should_end_session = False
+
     # Setting reprompt_text to None signifies that we do not want to reprompt
+    # the user. If the user does not respond or says something that is not
+    # understood, the session will end.
+    return build_response(session_attributes, build_speechlet_response(
+        intent['name'], speech_output, reprompt_text, should_end_session))
+
+
+def search_wikipedia(intent, session):
+    session_attributes = {}
+    reprompt_text = None
+    should_end_session = False
+    if 'Query' in intent['slots']:
+        query = intent['slots']['Query']['value']
+        page = wikipedia.page(query)
+        # qs = so.search(intitle=query)
+
+        # print('I found %d results' % (len(qs)))
+
+        speech_output = "I found something. " + page.title + ".  Would you like me to display it for you?"
+        session_attributes = create_page_attributes(page)
+
+        # session_attributes = create_favorite_color_attributes(favorite_color)
+    else:
+        speech_output = "I'm not sure what your query is. " \
+                        "Please try again."
+        reprompt_text = "I'm not sure what your query is. " \
+                        "You can tell me your query by saying, " \
+                        "Alexa, ask Wikipedia for the page Bayes Theorem."
+
+    # Setting reprompt_text to Nosone signifies that we do not want to reprompt
     # the user. If the user does not respond or says something that is not
     # understood, the session will end.
     return build_response(session_attributes, build_speechlet_response(
@@ -177,8 +168,10 @@ def on_intent(intent_request, session):
     intent_name = intent_request['intent']['name']
 
     # Dispatch to your skill's intent handlers
-    if intent_name.startswith("HowManyFingersIntent"):
-        return how_many_fingers(intent, session)
+    if intent_name == "Search":
+        return search_wikipedia(intent, session)
+    if intent_name == "Display":
+        return show_results_in_browser(intent, session)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
@@ -211,8 +204,8 @@ def lambda_handler(event, context):
     prevent someone else from configuring a skill that sends requests to this
     function.
     """
-    if (event['session']['application']['applicationId'] != "amzn1.ask.skill.dc723a59-5691-4ff4-8b2f-9895852a537c"):
-         raise ValueError("Invalid Application ID")
+    # if (event['session']['application']['applicationId'] != "amzn1.ask.skill.dc723a59-5691-4ff4-8b2f-9895852a537c"):
+    #      raise ValueError("Invalid Application ID")
 
     if event['session']['new']:
         on_session_started({'requestId': event['request']['requestId']},
